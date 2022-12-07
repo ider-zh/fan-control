@@ -84,7 +84,7 @@ def main():
         if usage > TOP_CPU_USAGE and temp > TOP_CPU_TEMP:
             # up up up 
             switch_pmi_status(True)
-            time.sleep(60 * 1000)
+            time.sleep(120)
         elif temp > TOP_CPU_TEMP:
             #  up up up
             if SYSTEM_STATUS["fan_speed"] + 5 < MAX_MANUAL_FAN_SPEED:

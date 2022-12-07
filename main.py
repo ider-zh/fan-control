@@ -8,6 +8,7 @@
 import psutil
 import time
 import os
+import datetime
 
 TOP_CPU_USAGE = 25
 LOW_CPU_USAGE = 5
@@ -43,7 +44,7 @@ def get_cpu_usage():
 def set_fan_speed(speed:int):
     if SYSTEM_STATUS["fan_speed"] == speed:
         return
-    print("set fan to:", speed)
+    print(datetime.datetime.now(), " set fan to:", speed)
     SYSTEM_STATUS['fan_speed'] = speed
     os.system(f"sudo ipmitool raw 0x30 0x30 0x02 0xff {hex(speed)}")
 
@@ -54,7 +55,7 @@ def switch_pmi_status(status:bool, init=False):
         return
 
     SYSTEM_STATUS["auto"] = status
-    print("switch to:", status)
+    print(datetime.datetime.now()," switch to:", status)
     if status:
         # open
         os.system("sudo ipmitool raw 0x30 0x30 0x01 0x01")
@@ -80,7 +81,7 @@ def main():
     while 1:
         usage = get_cpu_usage()
         temp = get_cpu_temp()
-        print("usage,temp:",usage,temp)
+        print(datetime.datetime.now() ," usage,temp:",usage,temp)
         if usage > TOP_CPU_USAGE and temp > TOP_CPU_TEMP:
             # up up up 
             switch_pmi_status(True)

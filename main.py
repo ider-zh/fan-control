@@ -48,8 +48,6 @@ def set_fan_speed(speed:int):
     SYSTEM_STATUS['fan_speed'] = speed
     os.system(f"sudo ipmitool raw 0x30 0x30 0x02 0xff {hex(speed)}")
 
-# get_cpu_temp()
-
 def switch_pmi_status(status:bool, init=False):
     if not init and SYSTEM_STATUS["auto"] == status:
         return
@@ -94,7 +92,7 @@ def main():
                 time.sleep(30)
             else:
                 switch_pmi_status(True)
-                time.sleep(60 * 1000)
+                time.sleep(60)
         elif usage <= LOW_CPU_USAGE and temp < LOWER_CPU_TEMP:
             # down
             switch_pmi_status(False)

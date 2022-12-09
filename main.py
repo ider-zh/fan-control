@@ -9,12 +9,13 @@ import psutil
 import time
 import os
 import datetime
+import re
 
-TOP_CPU_USAGE = 25
-LOW_CPU_USAGE = 5
+TOP_CPU_USAGE = 40
+LOW_CPU_USAGE = 20
 
-TOP_CPU_TEMP = 62 * 1000
-LOWER_CPU_TEMP = 57 * 1000
+TOP_CPU_TEMP = 62
+LOWER_CPU_TEMP = 57
 
 MIN_FAN_SPEED = 15
 # exceed MAX_MANUAL_FAN_SPEED then use auto control
@@ -35,7 +36,7 @@ def get_cpu_temp():
                 temp = f.read()
                 max_temp = max(int(temp.strip()),max_temp)
         time.sleep(1)
-    return max_temp
+    return int(max_temp/1000)
         
 def get_cpu_usage():
     # max 4800
@@ -44,7 +45,7 @@ def get_cpu_usage():
 def set_fan_speed(speed:int):
     if SYSTEM_STATUS["fan_speed"] == speed:
         return
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), " set fan to:", speed)
+    print(get_time_str(), " set fan to:", speed)
     SYSTEM_STATUS['fan_speed'] = speed
     os.system(f"sudo ipmitool raw 0x30 0x30 0x02 0xff {hex(speed)}")
 
@@ -53,13 +54,30 @@ def switch_pmi_status(status:bool, init=False):
         return
 
     SYSTEM_STATUS["auto"] = status
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')," switch to:", status)
+    print(get_time_str()," switch to:", status)
     if status:
         # open
         os.system("sudo ipmitool raw 0x30 0x30 0x01 0x01")
     else:
         # close
         os.system("sudo ipmitool raw 0x30 0x30 0x01 0x00")
+
+def get_ipmi_status():
+    ret = os.popen("sudo ipmitool sdr list full")
+    data = ret.read()
+    mt = re.findall(r" (\d+) RPM",data)
+    mti = list(map(lambda s:int(s),mt))
+    average_fan_speed = int(sum(mti)/len(mti))
+
+    mt = re.findall(r"^Temp.*? (\d+) degrees",data,re.M)
+    mti = list(map(lambda s:int(s),mt))
+    average_cpu_temp = int(sum(mti)/len(mti))
+
+    mt = re.findall(r"^CPU.*? (\d+) percent",data,re.M)
+    mti = list(map(lambda s:int(s),mt))
+    average_cpu_usage = int(sum(mti)/len(mti))
+
+    return average_fan_speed,average_cpu_temp,average_cpu_usage
 
 def init():
     usage = get_cpu_usage()
@@ -74,12 +92,16 @@ def init():
     elif temp < LOWER_CPU_TEMP:
         set_fan_speed(MIN_FAN_SPEED)
 
+def get_time_str():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 def main():
     time.sleep(5)
     while 1:
-        usage = get_cpu_usage()
-        temp = get_cpu_temp()
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') ," usage,temp:",usage,temp)
+        # usage = get_cpu_usage()
+        # temp = get_cpu_temp()
+        fan_speed , temp,usage = get_ipmi_status()
+        print(f'{get_time_str()} CPU:{usage} temp:{temp} fan_speed:{fan_speed}',end="\r")
         if usage > TOP_CPU_USAGE and temp > TOP_CPU_TEMP:
             # up up up 
             switch_pmi_status(True)
@@ -97,12 +119,15 @@ def main():
             # down
             switch_pmi_status(False)
             set_fan_speed(MIN_FAN_SPEED)
-            time.sleep(10)
+            time.sleep(30)
         else:
             # keep hold
-            time.sleep(10)
+            time.sleep(30)
             pass
 
 if __name__ == "__main__":
     init()
     main()
+
+
+# sudo ipmitool sdr list full
